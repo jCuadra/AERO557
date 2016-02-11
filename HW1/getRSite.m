@@ -4,13 +4,13 @@ function [ RSite ] = getRSite( siteInfo, begin )
 %   @param H    altitude of the observation location, km
 %   @param theta    Longitude, degrees
 %   @return RSite   R vector of the observation location in ECI, km
-
+global NUM_OBSV
 Re = 6378.137; %radius of the earth
 f = .003353; %oblateness factor of the earth
 phi = siteInfo.latSite;
 H = siteInfo.H;
 rad = pi/180;
-for i = begin:begin+2
+for i = begin:begin+NUM_OBSV-1
     thetaLST = LST(siteInfo.year(i), siteInfo.month(i), siteInfo.day(i),...
                     siteInfo.hour(i), siteInfo.min(i), siteInfo.sec(i),...
                     siteInfo.longSite, siteInfo.longmin);

@@ -1,4 +1,4 @@
-function [ Theta ] = LST( y, m, d, hr, min, sec, long, longmin )
+function [ Theta, UT ] = LST( y, m, d, hr, min, sec, long, longmin )
 %LST Finds theta LST for a location at a time stamp in UT time
 %   @param y    year
 %   @param m    month of the year
