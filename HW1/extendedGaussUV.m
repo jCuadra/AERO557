@@ -7,7 +7,7 @@ err = 10;
 r1Old = [1 1 1]';
 count_q = 0;
 qOld = q;
-while(err >1e-6)
+while(err >1e-3)
     r = RSite + qHat*diag(q);
     r1 = r(:, 1);
     r2 = r(:, 2);

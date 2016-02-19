@@ -1,6 +1,13 @@
 function [ f, g, gdot] = lambertUV( r1, r2, tau, tm )
-%UNTITLED Summary of this function goes here
-%   Detailed explanation goes here
+%Lambert's Universal variable function to find the lagrange multipliers in
+%order to find velpcity vectors
+%   @param r1       Initial r vector, 3x1 km
+%   @param r2       Final r vector, 3x1 km
+%   @param tau       Time between r vectors s
+%   @param tm       1 or -1 for short way or long way around
+%   @return f       Lagrange multiplier
+%   @return g       Lagrange multiplier
+%   @return g_dot   Lagrange multiplier
 mu = 398600;
 psi = 0;
 c2 = 1/2;

@@ -1,4 +1,4 @@
-function [ rKeep, vKeep, RSiteKeep, qHatKeep, qKeep, tau1Keep, tau3Keep ] =...
+function [ r, v, RSite, qHat, q, tau1, tau3 ] =...
             gaussOD(alpha, delta, siteInfo, start)
 %gaussOD Gauss method for orbit determination for an oject whose RAAN and 
 %Decclination were observed at 3 different time steps within 10 degrees of 
@@ -62,13 +62,7 @@ r = 0; v = 0;
     v = 1/(f1*g3-f3*g1)*(-f3*r(:,1)+f1*r(:,3));
     
     % Store for returns
-    RSiteKeep(:, i:i+2) = RSite
-    qHatKeep(:, i:i+2) = qHat
-    qKeep(:, i) = q
-    rKeep(:, i:i+2) = r
-    vKeep(:, i) = v
-    tau1Keep(i) = tau1;
-    tau3Keep(i) = tau3;
+
 
 %end
 end

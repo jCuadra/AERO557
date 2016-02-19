@@ -1,6 +1,14 @@
 function [ f, g, f_dot, g_dot ] = Lambert_Gauss( r_0, r, dt, tm )
-%UNTITLED3 Summary of this function goes here
-%   Detailed explanation goes here
+%Lambert- Gauss solver to obtain the f and g lambert variables in order to
+%find velocity.
+%   @param r_0      Initial r vector, 3x1 km
+%   @param r        Final r vector, 3x1 km
+%   @param dt       Time between r vectors s
+%   @param tm       1 or -1 for short way or long way around
+%   @return f       Lagrange multiplier
+%   @return g       Lagrange multiplier
+%   @return f_dot   Lagrange multiplier
+%   @return g_dot   Lagrange multiplier
 mu = 398600;
 r_N =  norm(r);
 r_0_N = norm(r_0);

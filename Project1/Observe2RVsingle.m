@@ -4,10 +4,11 @@
 clear all
 close all
 %% Set Up
-%addpath ../Vallado
+addpath ../Vallado
+addpath ../HW1
 global NUM_OBSV
 NUM_OBSV = 3;
-fid = fopen('input.txt', 'r');
+fid = fopen('singlePassInput.txt', 'r');
 count = 0;
 deg_sec = 306/86400;
 Re = 6378;
@@ -118,38 +119,100 @@ end
 %       hour         Hour of the day of the observation
 %       min          Minute of the hour of the observation
 %       sec          Second of the minute of the observation
-[r, v, RSite, qHat, q, tau1, tau3] = gaussOD(alpha, delta, siteInfo);
-
+[r, ~, RSite, qHat, q, tau1, tau3] = gaussOD(alpha, delta, siteInfo, 1);
+vAO = gibbs(r(:, 1), r(:, 2), r(:, 3)); %refine velocity
 % Get COEs
-[ ~, a, ecc, inc, Omega, ~, ~ ] = RV2COEd( r(:, 2), v);
-fprintf('The results of the gauss angles only method are as follows:\n');
+[ ~, a, ecc, inc, Omega, w, theta ] = RV2COEd( r(:, 2), vAO);
+fprintf('The following results are an approximation of the satelleite\n')
+fprintf('at %d:%d:%f :\n', siteInfo.hour(2), siteInfo.min(2), siteInfo.sec(2));
 fprintf('r: %f %f %f, \t norm(r): %f \n', r(:, 2), norm(r(:, 2)));
-fprintf('v: %f %f %f, \t norm(v): %f \n', v, norm(v));
+fprintf('v: %f %f %f, \t norm(v): %f \n', vAO, norm(vAO));
+fprintf('\n')
 fprintf('COES: \n a: %f km\n ecc: %f\n inc: %f deg\n RAAN: %f deg\n', a,...
     norm(ecc), inc, Omega);
-%% Double R
+fprintf(' w: %f deg\n theta: %f deg\n', w, theta);
+%% TLE Decision
+fprintf('\n')
+fprintf('Because of the strong agreement with the RAAN and inclination vectors,\n');
+fprintf('I think the object we observed was the second TLE. The RAAN and\n')
+fprintf('inc angles are almost spot on, and the arguement of perigee and \n')
+fprintf('true anomoly are about 180 degs off from the TLE which means the\n')
+fprintf('arguement of perigee vector was just flipped in my conversion to \n')
+fprintf('a COE. The only element that is of concern is the eccentricty. The\n')
+fprintf('eccentricty that I calculated is off by a factor of 10. Even still,\n')
+fprintf('the matching of the other COEs is enough to say with confidence that\n')
+fprintf('the second TLE is the TLE for the object that was observed.\n')
+%% Propogate R and V Forward
+mu = 398600;
+state = [r(:, 2);vAO]
+numOrbs = 5;
+options = odeset('RelTol', 1e-8);
+T = 2*pi*sqrt(a^3/mu);
+[t, y] = ode45(@orb_prop, [0 numOrbs*T], state, options);
+r2 = y(end, 1:3)'
+v2 = y(end, 4:6)'
+[~, a2, ecc2, inc2, Omega2, w2, theta2] = RV2COEd(r2, v2);
+fprintf('After propogating the R and V for %d periods of the orbit\n', numOrbs)
+fprintf('COES: \n a: %f km\n ecc: %f\n inc: %f deg\n RAAN: %f deg\n', a2,...
+    norm(ecc2), inc2, Omega2);
+fprintf(' w: %f deg\n theta: %f deg\n', w2, theta2);
 
-[r2vec, v2vec] = doubleR(qHat(:,1),qHat(:, 2),qHat(:,3), RSite(:, 1),...
-                         RSite(:, 2) ,RSite(:, 3), tau1, tau3);
-% Get More COEs
-[ p, a, ecc, inc, Omega, w, theta ] = RV2COEd( r2vec, v2vec);
-fprintf('The results of the Double r method are as follows:\n');
-fprintf('r: %f %f %f, \t norm(r): %f \n', r2vec, norm(r2vec));
-fprintf('v: %f %f %f, \t norm(v): %f \n', v2vec, norm(v2vec));
-fprintf('COES: \n a: %f km\n ecc: %f\n inc: %f deg\n RAAN: %f deg\n', a,...
-    norm(ecc), inc, Omega);
+%% Propogate TLE forward
+clear y state
+[rTLE, vTLE, yr, time] = TLE2rv('singlePassTLE.txt');
+state = [rTLE; vTLE]
+norm([r(:, 2) rTLE])
+[t, y] = ode45(@orb_prop, [0 numOrbs*T], state, options);
+r3 = y(end, 1:3)'
+v3 = y(end, 4:6)'
+[~, a3, ecc3, inc3, Omega3, w3, theta3] = RV2COEd(r3, v3);
+fprintf('After propogating the TLE for %d periods of the orbit\n', numOrbs)
+fprintf('COES: \n a: %f km\n ecc: %f\n inc: %f deg\n RAAN: %f deg\n', a3,...
+    norm(ecc3), inc3, Omega3);
+fprintf('\n')
+fprintf(' w: %f deg\n theta: %f deg\n', w3, theta3);
+fprintf('After propogating the orbits for 5 periods, my COEs have remained\n')
+fprintf('unchanged because I propogated them without pertibations. My\n')
+fprintf('COEs are still off by the same amount that they were off by before\n')
+fprintf('so I think that I am still correct.\n')
+fprintf('\n')
+%% Lambert UV
+dts = [-tau1 tau3];
+count = 1;
+for i = 1:2
+    [ f, g, g_dot ] = lambertUV( r(:, i), r(:, i+1), dts(i), 1 );
+    v(:, count) = (r(:, i+1)-f*r(:, i))/g;
+    count = count +1;
+    v(:, count) = (g_dot*r(:, i+1)-r(:, i))/g;
+    count = count+1;
+end
+vUV1 = v(:, 1);
+vUV2 = mean([v(:, 2) v(:, 3)], 2)
+vUV3 = v(:, 4);
 
+%% Lambert-Gauss
+clear v v1 v2 v3
+count = 1;
+for i = 1:2
+    [ f, g, f_dot, g_dot ] = Lambert_Gauss( r(:, i), r(:, i+1), dts(i), 1 );
+    v(:, count) = (r(:, i+1)-f*r(:, i))/g;
+    count = count +1;
+    v(:, count) = (g_dot*r(:, i+1)-r(:, i))/g;
+    count = count +1;
+end
+vG1 = v(:, 1);
+vG2 = mean([v(:, 2) v(:, 3)], 2)
+vG3 = v(:, 4);
 
-%% Extended Gauss
-[ r2, v2 ] = extendedGaussUV(  RSite, v, qHat, q, tau1, tau3);
+disp('UV error to angles only')
+norm(vUV1-vAO)/norm(vAO)
 
-% Get Better COEs
-[ ~, a, ecc, inc, Omega, ~, ~ ] = RV2COEd( r2(:, 2), v2);
-fprintf('The results of the exended gauss method are as follows:\n');
-fprintf('r: %f %f %f, \t norm(r): %f \n', r2(:,2), norm(r2(:,2)));
-fprintf('v: %f %f %f, \t norm(v): %f \n', v2, norm(v2));
-fprintf('COES: \n a: %f km\n ecc: %f\n inc: %f deg\n RAAN: %f deg\n', a,...
-    norm(ecc), inc, Omega);
+disp('Gauss error to angles only')
+norm(vG1-vAO)/norm(vAO)
+
+disp('error between UV and Gauss first set')
+norm(vUV1-vG1)/norm(vG1)
+
 
 %% Plots for Sanity Check
 % figure(1)
